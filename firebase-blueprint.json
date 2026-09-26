@@ -1,0 +1,86 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with display name, avatar, coins, gacha unlocked items, loadout, daily mission progress, and stats",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 50 },
+        "photoURL": { "type": "string", "maxLength": 500 },
+        "highScore": { "type": "number" },
+        "maxLevelReached": { "type": "number" },
+        "totalGhostsEaten": { "type": "number" },
+        "specialMovesUsed": { "type": "number" },
+        "favoriteTheme": { "type": "string", "maxLength": 50 },
+        "pacCoins": { "type": "number" },
+        "equippedSkin": { "type": "string", "maxLength": 50 },
+        "equippedGhostSkin": { "type": "string", "maxLength": 50 },
+        "equippedMazeSkin": { "type": "string", "maxLength": 50 },
+        "equippedPowers": { "type": "array" },
+        "unlockedItems": { "type": "array" },
+        "dailyMissionsDate": { "type": "string", "maxLength": 30 },
+        "dailyMissionsData": { "type": "string", "maxLength": 2000 },
+        "selectedDifficulty": { "type": "string", "maxLength": 30 },
+        "renderPerspective": { "type": "string", "maxLength": 20 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "displayName", "highScore", "maxLevelReached"]
+    },
+    "LeaderboardEntry": {
+      "title": "LeaderboardEntry",
+      "description": "Global high score leaderboard record",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "playerName": { "type": "string", "maxLength": 50 },
+        "avatarUrl": { "type": "string", "maxLength": 500 },
+        "score": { "type": "number" },
+        "level": { "type": "number" },
+        "characterId": { "type": "string", "maxLength": 50 },
+        "difficulty": { "type": "string", "maxLength": 30 },
+        "powerMoveUsedMost": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "playerName", "score", "level"]
+    },
+    "GhostReplay": {
+      "title": "GhostReplay",
+      "description": "Ghost replay recording of player's best run on a specific level with frame-by-frame actions and telemetry",
+      "type": "object",
+      "properties": {
+        "replayId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "playerName": { "type": "string", "maxLength": 50 },
+        "avatarUrl": { "type": "string", "maxLength": 500 },
+        "level": { "type": "number" },
+        "score": { "type": "number" },
+        "duration": { "type": "number" },
+        "difficulty": { "type": "string", "maxLength": 30 },
+        "equippedSkin": { "type": "string", "maxLength": 50 },
+        "equippedGhostSkin": { "type": "string", "maxLength": 50 },
+        "equippedMazeSkin": { "type": "string", "maxLength": 50 },
+        "totalDots": { "type": "number" },
+        "ghostsEaten": { "type": "number" },
+        "specialMovesUsed": { "type": "number" },
+        "replayData": { "type": "string", "maxLength": 500000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["replayId", "userId", "playerName", "level", "score", "replayData"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "UserProfile" },
+      "description": "User profile document storing stats, coins, gacha collections, and daily missions"
+    },
+    "/leaderboard/{entryId}": {
+      "schema": { "$ref": "LeaderboardEntry" },
+      "description": "Public arcade high score entries for global rank challenge"
+    },
+    "/replays/{replayId}": {
+      "schema": { "$ref": "GhostReplay" },
+      "description": "Ghost replay recordings of best runs on levels"
+    }
+  }
+}

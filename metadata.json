@@ -1,0 +1,6 @@
+{
+  "name": "AniPac - Anime Pac-Man Arcade",
+  "description": "The modern anime-themed Pac-Man arcade with shonen power-ups, evolving synth soundtrack, 1001 procedural neon stages, anime visuals & GIFs, and global leaderboards.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

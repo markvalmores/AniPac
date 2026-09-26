@@ -1,0 +1,127 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Validate UserProfile payload
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['userId', 'displayName', 'highScore', 'maxLevelReached']) &&
+        data.keys().hasOnly([
+          'userId', 'displayName', 'photoURL', 'highScore', 'maxLevelReached', 
+          'totalGhostsEaten', 'specialMovesUsed', 'favoriteTheme', 'pacCoins',
+          'equippedSkin', 'equippedGhostSkin', 'equippedMazeSkin', 'equippedPowers',
+          'unlockedItems', 'dailyMissionsDate', 'dailyMissionsData', 'selectedDifficulty',
+          'renderPerspective', 'updatedAt'
+        ]) &&
+        data.userId is string && data.userId == request.auth.uid &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 50 &&
+        data.highScore is number && data.highScore >= 0 && data.highScore <= 999999999 &&
+        data.maxLevelReached is number && data.maxLevelReached >= 1 && data.maxLevelReached <= 1001 &&
+        (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500)) &&
+        (!('favoriteTheme' in data) || (data.favoriteTheme is string && data.favoriteTheme.size() <= 50)) &&
+        (!('totalGhostsEaten' in data) || (data.totalGhostsEaten is number && data.totalGhostsEaten >= 0)) &&
+        (!('specialMovesUsed' in data) || (data.specialMovesUsed is number && data.specialMovesUsed >= 0)) &&
+        (!('pacCoins' in data) || (data.pacCoins is number && data.pacCoins >= 0 && data.pacCoins <= 99999999)) &&
+        (!('equippedSkin' in data) || (data.equippedSkin is string && data.equippedSkin.size() <= 50)) &&
+        (!('equippedGhostSkin' in data) || (data.equippedGhostSkin is string && data.equippedGhostSkin.size() <= 50)) &&
+        (!('equippedMazeSkin' in data) || (data.equippedMazeSkin is string && data.equippedMazeSkin.size() <= 50)) &&
+        (!('selectedDifficulty' in data) || (data.selectedDifficulty is string && data.selectedDifficulty.size() <= 30)) &&
+        (!('renderPerspective' in data) || (data.renderPerspective is string && data.renderPerspective.size() <= 20)) &&
+        (!('dailyMissionsDate' in data) || (data.dailyMissionsDate is string && data.dailyMissionsDate.size() <= 30)) &&
+        (!('dailyMissionsData' in data) || (data.dailyMissionsData is string && data.dailyMissionsData.size() <= 2000)) &&
+        (!('equippedPowers' in data) || (data.equippedPowers is list && data.equippedPowers.size() <= 12)) &&
+        (!('unlockedItems' in data) || (data.unlockedItems is list && data.unlockedItems.size() <= 500)) &&
+        (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 50));
+    }
+
+    // Validate LeaderboardEntry payload
+    function isValidLeaderboardEntry(data) {
+      return data.keys().hasAll(['userId', 'playerName', 'score', 'level']) &&
+        data.keys().hasOnly(['userId', 'playerName', 'avatarUrl', 'score', 'level', 'characterId', 'difficulty', 'powerMoveUsedMost', 'createdAt']) &&
+        data.userId is string && data.userId == request.auth.uid &&
+        data.playerName is string && data.playerName.size() >= 1 && data.playerName.size() <= 50 &&
+        data.score is number && data.score >= 0 && data.score <= 999999999 &&
+        data.level is number && data.level >= 1 && data.level <= 1001 &&
+        (!('avatarUrl' in data) || (data.avatarUrl is string && data.avatarUrl.size() <= 500)) &&
+        (!('characterId' in data) || (data.characterId is string && data.characterId.size() <= 50)) &&
+        (!('difficulty' in data) || (data.difficulty is string && data.difficulty.size() <= 30)) &&
+        (!('powerMoveUsedMost' in data) || (data.powerMoveUsedMost is string && data.powerMoveUsedMost.size() <= 50)) &&
+        (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 50));
+    }
+
+    // Validate GhostReplay payload
+    function isValidGhostReplay(data) {
+      return data.keys().hasAll(['replayId', 'userId', 'playerName', 'level', 'score', 'replayData']) &&
+        data.keys().hasOnly([
+          'replayId', 'userId', 'playerName', 'avatarUrl', 'level', 'score', 
+          'duration', 'difficulty', 'equippedSkin', 'equippedGhostSkin', 'equippedMazeSkin',
+          'totalDots', 'ghostsEaten', 'specialMovesUsed', 'replayData', 'createdAt'
+        ]) &&
+        data.replayId is string && data.replayId.size() >= 1 && data.replayId.size() <= 128 &&
+        data.userId is string && data.userId == request.auth.uid &&
+        data.playerName is string && data.playerName.size() >= 1 && data.playerName.size() <= 50 &&
+        data.level is number && data.level >= 1 && data.level <= 1001 &&
+        data.score is number && data.score >= 0 && data.score <= 999999999 &&
+        data.replayData is string && data.replayData.size() <= 500000 &&
+        (!('avatarUrl' in data) || (data.avatarUrl is string && data.avatarUrl.size() <= 500)) &&
+        (!('duration' in data) || (data.duration is number && data.duration >= 0)) &&
+        (!('difficulty' in data) || (data.difficulty is string && data.difficulty.size() <= 30)) &&
+        (!('equippedSkin' in data) || (data.equippedSkin is string && data.equippedSkin.size() <= 50)) &&
+        (!('equippedGhostSkin' in data) || (data.equippedGhostSkin is string && data.equippedGhostSkin.size() <= 50)) &&
+        (!('equippedMazeSkin' in data) || (data.equippedMazeSkin is string && data.equippedMazeSkin.size() <= 50)) &&
+        (!('totalDots' in data) || (data.totalDots is number && data.totalDots >= 0)) &&
+        (!('ghostsEaten' in data) || (data.ghostsEaten is number && data.ghostsEaten >= 0)) &&
+        (!('specialMovesUsed' in data) || (data.specialMovesUsed is number && data.specialMovesUsed >= 0)) &&
+        (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 50));
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow get, list: if true;
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUserProfile(incoming());
+      allow update: if isOwner(userId) && isValidId(userId) && isValidUserProfile(incoming()) && incoming().userId == existing().userId;
+      allow delete: if isOwner(userId);
+    }
+
+    // Leaderboard Collection
+    match /leaderboard/{entryId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && isValidId(entryId) && isValidLeaderboardEntry(incoming());
+      allow update: if isSignedIn() && isValidId(entryId) && isOwner(existing().userId) && isValidLeaderboardEntry(incoming()) && incoming().userId == existing().userId;
+      allow delete: if isSignedIn() && isOwner(existing().userId);
+    }
+
+    // Ghost Replays Collection
+    match /replays/{replayId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && isValidId(replayId) && isValidGhostReplay(incoming());
+      allow update: if isSignedIn() && isValidId(replayId) && isOwner(existing().userId) && isValidGhostReplay(incoming()) && incoming().userId == existing().userId;
+      allow delete: if isSignedIn() && isOwner(existing().userId);
+    }
+  }
+}
