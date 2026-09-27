@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BackgroundTheme, AnimeGifItem } from '../game/types';
-import { CURATED_ANIME_THEMES, POPULAR_ANIME_GIFS, searchAnimeGifs } from '../game/backgroundThemes';
-import { X, Search, Sparkles, Image as ImageIcon, Sliders, Check, ExternalLink } from 'lucide-react';
+import { CURATED_ANIME_THEMES, POPULAR_ANIME_GIFS, searchAnimeGifs, ANIME_GIF_CATEGORIES, fetchLiveAnimeGif } from '../game/backgroundThemes';
+import { X, Search, Sparkles, Image as ImageIcon, Sliders, Check, ExternalLink, RefreshCw, Flame } from 'lucide-react';
 
 interface BackgroundCustomizerModalProps {
   isOpen: boolean;
@@ -34,6 +34,8 @@ export const BackgroundCustomizerModal: React.FC<BackgroundCustomizerModalProps>
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [tempCustomUrl, setTempCustomUrl] = useState<string>(customGifUrl);
 
+  const [activeReaction, setActiveReaction] = useState<string>('');
+
   useEffect(() => {
     setTempCustomUrl(customGifUrl);
   }, [customGifUrl]);
@@ -43,6 +45,19 @@ export const BackgroundCustomizerModal: React.FC<BackgroundCustomizerModalProps>
     setIsSearching(true);
     const results = await searchAnimeGifs(searchQuery);
     setSearchResults(results);
+    setIsSearching(false);
+  };
+
+  const handleSelectReaction = async (reaction: string) => {
+    setActiveReaction(reaction);
+    setIsSearching(true);
+    const liveGif = await fetchLiveAnimeGif(reaction);
+    if (liveGif) {
+      setSearchResults((prev) => [liveGif, ...prev.filter((p) => p.url !== liveGif.url)]);
+    } else {
+      const results = await searchAnimeGifs(reaction);
+      setSearchResults(results);
+    }
     setIsSearching(false);
   };
 
@@ -205,11 +220,45 @@ export const BackgroundCustomizerModal: React.FC<BackgroundCustomizerModalProps>
                 <button
                   type="submit"
                   disabled={isSearching}
-                  className="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold font-['Orbitron'] tracking-wider shadow-lg shadow-rose-600/30 transition-all"
+                  className="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold font-['Orbitron'] tracking-wider shadow-lg shadow-rose-600/30 transition-all cursor-pointer"
                 >
-                  {isSearching ? 'SEARCHING...' : 'SEARCH'}
+                  {isSearching ? 'FETCHING...' : 'SEARCH'}
                 </button>
               </form>
+
+              {/* Live Anime GIF Categories (Otakugifs API) */}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between text-[11px] text-zinc-400">
+                  <span className="font-bold flex items-center gap-1 text-cyan-400">
+                    <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                    LIVE ANIME REACTIONS API
+                  </span>
+                  <span className="text-[10px] text-emerald-400 font-mono">
+                    ● Otakugifs Cloud Active
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {ANIME_GIF_CATEGORIES.map((cat) => {
+                    const isSelected = activeReaction === cat.reaction;
+                    return (
+                      <button
+                        key={cat.reaction}
+                        type="button"
+                        onClick={() => handleSelectReaction(cat.reaction)}
+                        disabled={isSearching}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-rose-600 text-white shadow-md shadow-rose-600/40 ring-1 ring-rose-400'
+                            : 'bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 border border-zinc-800'
+                        }`}
+                      >
+                        <span>{cat.emoji}</span>
+                        <span>{cat.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
               {/* GIF Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-h-[380px] overflow-y-auto pr-1">

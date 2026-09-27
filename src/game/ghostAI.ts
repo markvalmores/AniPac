@@ -34,7 +34,7 @@ export function createInitialGhosts(
   const levelSpeedMultiplier = 1.0 + Math.min(0.6, (level - 1) * 0.015);
   const baseSpeed = 0.075 * levelSpeedMultiplier * diffMultiplier;
 
-  // Exit delays decrease on higher levels
+  // Level exit reduction on higher levels
   const levelExitReduction = Math.min(3, Math.floor((level - 1) / 3));
 
   return [
@@ -77,7 +77,7 @@ export function createInitialGhosts(
       state: 'CHASE',
       frightenedTimer: 0,
       homeCorner: { x: 1, y: 1 }, // Top Left
-      penExitDelay: Math.max(0.5, (difficulty === 'HUNTER' ? 1 : 2.5) - levelExitReduction * 0.5),
+      penExitDelay: Math.max(0.4, 1.5 - levelExitReduction * 0.3),
       isInPen: true,
       targetTile: { x: 1, y: 1 },
       pulse: 0,
@@ -100,7 +100,7 @@ export function createInitialGhosts(
       state: 'CHASE',
       frightenedTimer: 0,
       homeCorner: { x: GRID_WIDTH - 2, y: GRID_HEIGHT - 2 }, // Bottom Right
-      penExitDelay: Math.max(1.0, (difficulty === 'HUNTER' ? 2 : 4.5) - levelExitReduction * 0.6),
+      penExitDelay: Math.max(0.8, 3.0 - levelExitReduction * 0.5),
       isInPen: true,
       targetTile: { x: GRID_WIDTH - 2, y: GRID_HEIGHT - 2 },
       pulse: 0,
@@ -123,12 +123,12 @@ export function createInitialGhosts(
       state: 'CHASE',
       frightenedTimer: 0,
       homeCorner: { x: 1, y: GRID_HEIGHT - 2 }, // Bottom Left
-      penExitDelay: Math.max(1.5, (difficulty === 'HUNTER' ? 3 : 6.5) - levelExitReduction * 0.7),
+      penExitDelay: Math.max(1.2, 4.5 - levelExitReduction * 0.7),
       isInPen: true,
       targetTile: { x: 1, y: GRID_HEIGHT - 2 },
       pulse: 0,
       tacticalRole: 'PATROLLER',
-      thought: '👻 GUARDING SHRINE',
+      thought: '👻 SHADOW HUNT',
     },
   ];
 }
@@ -162,8 +162,14 @@ export function updateGhostAI(
     if (ghost.penExitDelay > 0) {
       ghost.penExitDelay -= dt;
       // Gentle hovering animation inside pen
-      ghost.y = mapData.ghostSpawns[ghost.id].y + Math.sin(ghost.pulse * 3) * 0.15;
+      const spawn = mapData.ghostSpawns[ghost.id] || { x: mapData.ghostPenDoor.x, y: mapData.ghostPenDoor.y };
+      ghost.x = spawn.x;
+      ghost.y = spawn.y + Math.sin(ghost.pulse * 3) * 0.15;
       ghost.thought = `⏳ DEPLOYING IN ${Math.ceil(ghost.penExitDelay)}s`;
+
+      if (ghost.penExitDelay < -4.0) {
+        ghost.penExitDelay = 0;
+      }
       return;
     } else {
       // Step smoothly out through the ghost door
@@ -181,12 +187,11 @@ export function updateGhostAI(
       }
 
       // Then move up through door Y
-      if (ghost.y > targetExitY + 0.08) {
-        ghost.y -= ghost.baseSpeed * dt * 60;
-        ghost.dir = 'UP';
-        ghost.thought = '⚡ EXITING GHOST PEN';
-        return;
-      } else {
+      ghost.y -= ghost.baseSpeed * dt * 60;
+      ghost.dir = 'UP';
+      ghost.thought = '⚡ EXITING GHOST PEN';
+
+      if (ghost.y <= targetExitY + 0.08 || ghost.y < targetExitY) {
         // Successfully exited into the active maze!
         ghost.x = doorX;
         ghost.y = targetExitY;
@@ -197,6 +202,7 @@ export function updateGhostAI(
         ghost.state = player.isFeverMode ? 'FRIGHTENED' : 'CHASE';
         ghost.thought = '🔥 HUNTING SHINOBI';
       }
+      return;
     }
   }
 
@@ -223,9 +229,15 @@ export function updateGhostAI(
     ghost.targetTile = { x: mapData.ghostPenDoor.x, y: mapData.ghostPenDoor.y };
     ghost.thought = '👁️ RETURNING TO RECHARGE';
     if (Math.hypot(ghost.x - mapData.ghostPenDoor.x, ghost.y - mapData.ghostPenDoor.y) < 0.6) {
+      const spawn = mapData.ghostSpawns[ghost.id] || { x: mapData.ghostPenDoor.x, y: mapData.ghostPenDoor.y };
+      ghost.x = spawn.x;
+      ghost.y = spawn.y;
+      ghost.gridX = Math.round(spawn.x);
+      ghost.gridY = Math.round(spawn.y);
       ghost.state = 'CHASE';
-      ghost.isInPen = false;
-      ghost.thought = '💥 REGENERATED!';
+      ghost.isInPen = true;
+      ghost.penExitDelay = 1.0; // Quick 1 second regeneration before exiting cage again
+      ghost.thought = '💥 REGENERATING IN CAGE';
     }
   } else if (ghost.state === 'FRIGHTENED' || ghost.state === 'BLINDED') {
     // Tactical evasion: run to opposite corner of player

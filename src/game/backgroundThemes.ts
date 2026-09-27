@@ -6,7 +6,7 @@ export const CURATED_ANIME_THEMES: BackgroundTheme[] = [
     name: 'Neo-Tokyo Cyberpunk',
     description: 'Electric neon skyscrapers, glowing holographic signs, and cybernetic rain.',
     category: 'cyberpunk',
-    gifUrl: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3g0MmhqZm1xZWk1c3J1a25iM3drZWZ2NGx2ejdyZnN0aG15dnhkZCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKTDnUxE6uQjaYM/giphy.gif',
+    gifUrl: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNWVpZG9uOG9tN2U3a2Z2ZXpqMjdrdDB1OXg4NmJ0OTFnOHp5eDVwNyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/4gsjHZMPXdlGo/giphy.gif',
     bgGradient: 'radial-gradient(ellipse at center, #0f172a 0%, #030712 100%)',
     wallColor: '#00f0ff',
     wallGlow: 'rgba(0, 240, 255, 0.7)',
@@ -19,7 +19,7 @@ export const CURATED_ANIME_THEMES: BackgroundTheme[] = [
     name: 'Cherry Blossom Shrine',
     description: 'Serene ancient Torii gate surrounded by floating pink sakura petals under moonlight.',
     category: 'scenic',
-    gifUrl: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM2FjbnE2d2dpd2pmeTFoMHR4Y3dyZGptNnd2eXZhbjU0a3I3ZTR3YyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0HlTy9x8FxqyV0go/giphy.gif',
+    gifUrl: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3FjbnE2d2dpd2pmeTFoMHR4Y3dyZGptNnd2eXZhbjU0a3I3ZTR3YyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0HlTy9x8FxqyV0go/giphy.gif',
     bgGradient: 'radial-gradient(ellipse at center, #2e0854 0%, #0c021f 100%)',
     wallColor: '#ff77a9',
     wallGlow: 'rgba(255, 119, 169, 0.7)',
@@ -58,7 +58,7 @@ export const CURATED_ANIME_THEMES: BackgroundTheme[] = [
     name: 'Infinite Domain Void',
     description: 'Deep celestial dimension filled with swirling galaxies and infinite starlight.',
     category: 'cosmic',
-    gifUrl: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbmJydjFld3p3ZHV3Zms4eGFlaHczazExazhsaWkwdmhpczZzcnczOCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7bu3XilJ5BOiSGic/giphy.gif',
+    gifUrl: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExYnQyeDN3MXN3d2VveWkyazZ6czhrb2pza2c2anoxMXVldWZtZ2tpeCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/WmkqburJqXziM/giphy.gif',
     bgGradient: 'radial-gradient(ellipse at center, #1e1b4b 0%, #020617 100%)',
     wallColor: '#c084fc',
     wallGlow: 'rgba(192, 132, 252, 0.7)',
@@ -68,10 +68,10 @@ export const CURATED_ANIME_THEMES: BackgroundTheme[] = [
   },
   {
     id: 'arcade-synthwave',
-    name: 'Retro Synthwave Grid',
-    description: '1980s neon purple horizon grid with giant wireframe synth sun.',
+    name: 'Retro Anime Cyber Grid',
+    description: 'Arcade neon cyber grid with pulsing Anime energy waves.',
     category: 'neon',
-    gifUrl: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOWl2OGQyeWNqdTFmdWZ3amlyM3RveHRocmt4czgyMWc4OHdrOXA2dyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/d1E2VyhFsxawRfZ6/giphy.gif',
+    gifUrl: 'https://cdn.otakugifs.xyz/gifs/dance/594d5fa6302b0e10.gif',
     bgGradient: 'radial-gradient(ellipse at center, #311042 0%, #0a0314 100%)',
     wallColor: '#ec4899',
     wallGlow: 'rgba(236, 72, 153, 0.7)',
@@ -90,84 +90,115 @@ export const POPULAR_ANIME_GIFS: AnimeGifItem[] = [
     category: 'Battle',
   },
   {
-    id: 'gif-tokyo-cyber',
-    title: 'Neo-Tokyo Cyber City Rain',
-    url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3g0MmhqZm1xZWk1c3J1a25iM3drZWZ2NGx2ejdyZnN0aG15dnhkZCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKTDnUxE6uQjaYM/giphy.gif',
-    previewUrl: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3g0MmhqZm1xZWk1c3J1a25iM3drZWZ2NGx2ejdyZnN0aG15dnhkZCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKTDnUxE6uQjaYM/200.gif',
-    category: 'Cyberpunk',
-  },
-  {
-    id: 'gif-sakura-night',
-    title: 'Sakura Night Blossom Temple',
-    url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM2FjbnE2d2dpd2pmeTFoMHR4Y3dyZGptNnd2eXZhbjU0a3I3ZTR3YyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0HlTy9x8FxqyV0go/giphy.gif',
-    previewUrl: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM2FjbnE2d2dpd2pmeTFoMHR4Y3dyZGptNnd2eXZhbjU0a3I3ZTR3YyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0HlTy9x8FxqyV0go/200.gif',
-    category: 'Scenic',
-  },
-  {
-    id: 'gif-demon-slayer-water',
-    title: 'Demon Slayer Water Breathing',
-    url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnAxd2J1Y3l4MHp3aWd1a292d2dja3d3aW0wZXRqZ2M1cmk4eHp4bCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/B4bkhn8e3w45G/giphy.gif',
-    previewUrl: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnAxd2J1Y3l4MHp3aWd1a292d2dja3d3aW0wZXRqZ2M1cmk4eHp4bCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/B4bkhn8e3w45G/200.gif',
-    category: 'Action',
-  },
-  {
-    id: 'gif-jjk-domain',
-    title: 'Jujutsu Void Eye Expansion',
-    url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbmJydjFld3p3ZHV3Zms4eGFlaHczazExazhsaWkwdmhpczZzcnczOCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7bu3XilJ5BOiSGic/giphy.gif',
-    previewUrl: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbmJydjFld3p3ZHV3Zms4eGFlaHczazExazhsaWkwdmhpczZzcnczOCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7bu3XilJ5BOiSGic/200.gif',
-    category: 'Domain',
-  },
-  {
-    id: 'gif-synth-sun',
-    title: 'Retro Arcade 80s Grid',
-    url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOWl2OGQyeWNqdTFmdWZ3amlyM3RveHRocmt4czgyMWc4OHdrOXA2dyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/d1E2VyhFsxawRfZ6/giphy.gif',
-    previewUrl: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOWl2OGQyeWNqdTFmdWZ3amlyM3RveHRocmt4czgyMWc4OHdrOXA2dyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/d1E2VyhFsxawRfZ6/200.gif',
-    category: 'Retro',
-  },
-  {
     id: 'gif-naruto-rasengan',
     title: 'Naruto Chakra Rasengan',
     url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNWVpZG9uOG9tN2U3a2Z2ZXpqMjdrdDB1OXg4NmJ0OTFnOHp5eDVwNyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/4gsjHZMPXdlGo/giphy.gif',
     previewUrl: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNWVpZG9uOG9tN2U3a2Z2ZXpqMjdrdDB1OXg4NmJ0OTFnOHp5eDVwNyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/4gsjHZMPXdlGo/200.gif',
-    category: 'Action',
+    category: 'Battle',
   },
   {
     id: 'gif-luffy-gear5',
     title: 'Gear 5 Sun God Liberation',
     url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExYnQyeDN3MXN3d2VveWkyazZ6czhrb2pza2c2anoxMXVldWZtZ2tpeCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/WmkqburJqXziM/giphy.gif',
     previewUrl: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExYnQyeDN3MXN3d2VveWkyazZ6czhrb2pza2c2anoxMXVldWZtZ2tpeCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/WmkqburJqXziM/200.gif',
-    category: 'Action',
+    category: 'Battle',
+  },
+  {
+    id: 'gif-demon-slayer-water',
+    title: 'Demon Slayer Water Breathing',
+    url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnAxd2J1Y3l4MHp3aWd1a292d2dja3d3aW0wZXRqZ2M1cmk4eHp4bCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/B4bkhn8e3w45G/giphy.gif',
+    previewUrl: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnAxd2J1Y3l4MHp3aWd1a292d2dja3d3aW0wZXRqZ2M1cmk4eHp4bCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/B4bkhn8e3w45G/200.gif',
+    category: 'Battle',
+  },
+  {
+    id: 'gif-sakura-night',
+    title: 'Sakura Night Blossom Temple',
+    url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3FjbnE2d2dpd2pmeTFoMHR4Y3dyZGptNnd2eXZhbjU0a3I3ZTR3YyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0HlTy9x8FxqyV0go/giphy.gif',
+    previewUrl: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3FjbnE2d2dpd2pmeTFoMHR4Y3dyZGptNnd2eXZhbjU0a3I3ZTR3YyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0HlTy9x8FxqyV0go/200.gif',
+    category: 'Scenic',
+  },
+  {
+    id: 'gif-anime-punch',
+    title: 'High-Impact Shonen Strike',
+    url: 'https://cdn.otakugifs.xyz/gifs/punch/7895d749a1244483.gif',
+    previewUrl: 'https://cdn.otakugifs.xyz/gifs/punch/7895d749a1244483.gif',
+    category: 'Battle',
+  },
+  {
+    id: 'gif-anime-celebrate',
+    title: 'Arcade Victory Confetti',
+    url: 'https://cdn.otakugifs.xyz/gifs/celebrate/6972def9c7c55de5.gif',
+    previewUrl: 'https://cdn.otakugifs.xyz/gifs/celebrate/6972def9c7c55de5.gif',
+    category: 'Celebrate',
+  },
+  {
+    id: 'gif-anime-dance',
+    title: 'Cyberpunk Neon Dance',
+    url: 'https://cdn.otakugifs.xyz/gifs/dance/594d5fa6302b0e10.gif',
+    previewUrl: 'https://cdn.otakugifs.xyz/gifs/dance/594d5fa6302b0e10.gif',
+    category: 'Dance',
   }
 ];
+
+export const ANIME_GIF_CATEGORIES = [
+  { reaction: 'punch', label: 'Battle / Fight', emoji: '⚔️' },
+  { reaction: 'dance', label: 'Dance / Rhythm', emoji: '💃' },
+  { reaction: 'celebrate', label: 'Victory / Party', emoji: '🎉' },
+  { reaction: 'run', label: 'Speed / Chase', emoji: '🏃' },
+  { reaction: 'cool', label: 'Badass / Cool', emoji: '😎' },
+  { reaction: 'evillaugh', label: 'Evil Oni Boss', emoji: '👹' },
+  { reaction: 'happy', label: 'Joy / Energy', emoji: '✨' },
+  { reaction: 'mad', label: 'Rage Surge', emoji: '🔥' },
+  { reaction: 'smug', label: 'Smug Shinobi', emoji: '😏' },
+  { reaction: 'yay', label: 'Super Cheers', emoji: '🥳' },
+];
+
+export async function fetchLiveAnimeGif(reaction: string): Promise<AnimeGifItem | null> {
+  try {
+    const res = await fetch(`https://api.otakugifs.xyz/gif?reaction=${encodeURIComponent(reaction)}`, {
+      signal: AbortSignal.timeout(3500),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.url) {
+        return {
+          id: `otaku-${reaction}-${Date.now()}`,
+          title: `Anime ${reaction.toUpperCase()} Action`,
+          url: data.url,
+          previewUrl: data.url,
+          category: reaction,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('Live Anime GIF API fetch failed, falling back:', err);
+  }
+  return null;
+}
 
 export async function searchAnimeGifs(query: string): Promise<AnimeGifItem[]> {
   const trimmed = query.trim().toLowerCase();
   if (!trimmed) return POPULAR_ANIME_GIFS;
 
-  try {
-    // Search Giphy public arcade endpoint with anime tag
-    const endpoint = `https://api.giphy.com/v1/gifs/search?api_key=dc6zaTOxFJmzC&q=${encodeURIComponent(
-      'anime ' + trimmed
-    )}&limit=16&rating=pg`;
-    const res = await fetch(endpoint);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.data && Array.isArray(data.data) && data.data.length > 0) {
-        return data.data.map((item: any) => ({
-          id: item.id,
-          title: item.title || `${trimmed} animation`,
-          url: item.images?.original?.url || item.images?.downsized?.url,
-          previewUrl: item.images?.fixed_width_small?.url || item.images?.preview_gif?.url,
-          category: 'Search Result',
-        }));
-      }
-    }
-  } catch (err) {
-    console.warn('Anime GIF API fallback to local curated set:', err);
+  // 1. Check if the query matches a live reaction category
+  const matchingCategory = ANIME_GIF_CATEGORIES.find(
+    (c) => c.reaction.includes(trimmed) || c.label.toLowerCase().includes(trimmed)
+  );
+
+  let liveItem: AnimeGifItem | null = null;
+  if (matchingCategory || ['fight', 'attack', 'power', 'fast', 'chase', 'demon'].includes(trimmed)) {
+    const reactionKey = matchingCategory?.reaction || (trimmed === 'fight' || trimmed === 'attack' ? 'punch' : trimmed === 'fast' || trimmed === 'chase' ? 'run' : 'cool');
+    liveItem = await fetchLiveAnimeGif(reactionKey);
   }
 
-  // Filter curated collection as reliable fallback
-  return POPULAR_ANIME_GIFS.filter(
+  // 2. Filter existing rich library
+  const matched = POPULAR_ANIME_GIFS.filter(
     (g) => g.title.toLowerCase().includes(trimmed) || g.category.toLowerCase().includes(trimmed)
   );
+
+  if (liveItem) {
+    return [liveItem, ...matched.filter((m) => m.url !== liveItem?.url)];
+  }
+
+  return matched.length > 0 ? matched : POPULAR_ANIME_GIFS;
 }

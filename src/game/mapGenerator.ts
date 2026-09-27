@@ -187,6 +187,19 @@ export function generateLevelMap(levelNumber: number, customTextureStyle?: MazeT
   const playerStartX = midX;
   grid[playerStartY][playerStartX] = TileType.EMPTY;
 
+  // Guarantee clear 4-way open crossroads around player start so Pac-Man is NEVER trapped or stuck in any level
+  for (let x = Math.max(1, midX - 3); x <= Math.min(width - 2, midX + 3); x++) {
+    if (grid[playerStartY][x] === TileType.WALL) {
+      grid[playerStartY][x] = TileType.DOT;
+    }
+  }
+  for (let y = Math.max(1, playerStartY - 2); y <= Math.min(height - 2, playerStartY + 2); y++) {
+    if (grid[y][playerStartX] === TileType.WALL) {
+      grid[y][playerStartX] = TileType.DOT;
+    }
+  }
+  grid[playerStartY][playerStartX] = TileType.EMPTY;
+
   const ghostSpawns: Record<GhostType, { x: number; y: number }> = {
     AKUMA: { x: midX, y: penStartY - 1 },
     KITSUNE: { x: midX - 1, y: midY },

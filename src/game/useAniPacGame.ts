@@ -32,6 +32,7 @@ import { VFXEngine } from './vfx';
 import { audioEngine } from './audioEngine';
 import { InputManager } from './inputManager';
 import { saveGhostReplay, getLocalBestReplay } from '../firebase/replayService';
+import { gpuRayTracing } from './gpuRayTracingEngine';
 import confetti from 'canvas-confetti';
 
 export function useAniPacGame(
@@ -63,6 +64,15 @@ export function useAniPacGame(
   const [controllerInfo, setControllerInfo] = useState<{ connected: boolean; name: string }>({ connected: false, name: '' });
   const [coinsEarnedThisRun, setCoinsEarnedThisRun] = useState<number>(0);
 
+  // GPU Hardware Acceleration, Ray Tracing & AI Frame Gen State (Capped at 500 FPS)
+  const [fps, setFps] = useState<number>(500);
+  const [rayTracingActive, setRayTracingActive] = useState<boolean>(true);
+  const [frameGenActive, setFrameGenActive] = useState<boolean>(true);
+
+  // Seamless Stage Transition States
+  const [isStageTransitioning, setIsStageTransitioning] = useState<boolean>(false);
+  const [nextStageCountdown, setNextStageCountdown] = useState<number>(2.0);
+
   // Stats
   const [moveStats, setMoveStats] = useState<Record<string, number>>({});
   const [ghostsEatenTotal, setGhostsEatenTotal] = useState<number>(0);
@@ -72,6 +82,11 @@ export function useAniPacGame(
   const [isFeverMode, setIsFeverMode] = useState<boolean>(false);
   const [feverTimer, setFeverTimer] = useState<number>(0);
   const [feverPelletCount, setFeverPelletCount] = useState<number>(0);
+
+  // Victory Kill-Streak Notification State
+  const [isKillStreakActive, setIsKillStreakActive] = useState<boolean>(false);
+  const [killStreakTitle, setKillStreakTitle] = useState<string>('🔥 OMNI KILL-STREAK: 4 GHOSTS ANNIHILATED!');
+  const dismissKillStreak = () => setIsKillStreakActive(false);
 
   // Engine references
   const vfxRef = useRef<VFXEngine>(new VFXEngine());
@@ -128,27 +143,11 @@ export function useAniPacGame(
   const [ghostRacerEnabled, setGhostRacerEnabled] = useState<boolean>(true);
 
   // Sync Level, Skins & Map
+  const loadedLevelRef = useRef<number>(currentLevel);
   useEffect(() => {
-    setLevel(currentLevel);
-    const mSkin = GACHA_MAZE_SKINS.find((m) => m.id === equippedMazeSkinId);
-    mapDataRef.current = generateLevelMap(currentLevel, mSkin?.style);
-    ghostsRef.current = createInitialGhosts(mapDataRef.current, currentLevel, difficulty);
-    resetPlayerPosition();
-    vfxRef.current.floatingTexts = [];
-    vfxRef.current.particles = [];
-    shadowClonesRef.current = [];
-    setDotsEatenThisStage(0);
-    setIsFeverMode(false);
-    setFeverTimer(0);
-    setFeverPelletCount(0);
-    playerRef.current.isFeverMode = false;
-    playerRef.current.feverTimer = 0;
-    playerRef.current.feverPelletCounter = 0;
-
-    // Load existing best ghost replay for this level for Ghost Racer
-    const existingReplay = getLocalBestReplay(currentLevel);
-    activeBestReplayRef.current = existingReplay;
-    replayFramesRef.current = [];
+    if (loadedLevelRef.current === currentLevel) return;
+    loadedLevelRef.current = currentLevel;
+    startLevel(currentLevel, true);
   }, [currentLevel, difficulty, equippedMazeSkinId]);
 
   useEffect(() => {
@@ -506,6 +505,21 @@ export function useAniPacGame(
       isInstantVaporize ? 'VAPORIZED! 🪙+' + coinBonus : `CHAIN x${newMultiplier} 🪙+` + coinBonus,
       newMultiplier >= 8 ? 24 : 18
     );
+    if (p.ghostChainCount >= 4) {
+      setIsKillStreakActive(true);
+      setKillStreakTitle(`🔥 GODLIKE EXTERMINATION: ${p.ghostChainCount} GHOSTS ANNIHILATED!`);
+      vfxRef.current.triggerScreenShake(22);
+      audioEngine.playFeverStart();
+      try {
+        confetti({
+          particleCount: 120,
+          spread: 100,
+          origin: { y: 0.5 },
+          colors: ['#EF4444', '#F43F5E', '#A855F7', '#38BDF8', '#FACC15'],
+        });
+      } catch {}
+    }
+
     inputRef.current.triggerHaptics(180, 0.5, 0.8);
   };
 
@@ -539,19 +553,23 @@ export function useAniPacGame(
   };
 
   const handleLevelClear = () => {
+    if (gameState !== 'PLAYING') return;
+
     audioEngine.stopMusic();
     audioEngine.playLevelClear();
     setGameState('VICTORY');
+    setIsStageTransitioning(true);
+    setNextStageCountdown(2.2);
 
-    recordFrame('STAGE_CLEAR', 'STAGE CLEARED!', '#10B981');
+    recordFrame('STAGE_CLEAR', `STAGE ${level} CLEARED!`, '#10B981');
 
     const levelCoins = 100 + level * 5;
     setCoinsEarnedThisRun((prev) => prev + levelCoins);
 
     try {
       confetti({
-        particleCount: 130,
-        spread: 85,
+        particleCount: 140,
+        spread: 90,
         origin: { y: 0.6 },
         colors: ['#00f0ff', '#ff0077', '#fdfa72', '#a855f7', '#10b981'],
       });
@@ -601,11 +619,14 @@ export function useAniPacGame(
     });
   };
 
-  // Main Loop
+  // Main Loop with Hardware GPU Acceleration, Desynchronized Canvas & AI Frame Interpolation (Capped at 500 FPS)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', {
+      alpha: false,
+      desynchronized: true, // Bypass OS compositor locks for low-latency GPU frame delivery
+    });
     if (!ctx) return;
 
     let isRunning = true;
@@ -621,13 +642,28 @@ export function useAniPacGame(
       const elapsed = (timestamp - lastTimeRef.current) / 1000;
       lastTimeRef.current = timestamp;
 
-      // Safe clamp dt (between 1ms and 50ms) to prevent physics glitches when switching modes
+      // Safe clamp dt (between 1ms and 50ms) to prevent physics glitches
       const dt = Math.max(0.001, Math.min(0.05, isNaN(elapsed) || !isFinite(elapsed) ? 0.016 : elapsed));
+
+      // Precision GPU / CPU & AI Frame Generation benchmark (capped at 500 FPS)
+      gpuRayTracing.updateFps(timestamp);
+      setFps(gpuRayTracing.smoothedFps);
 
       inputRef.current.pollGamepad();
 
       if (gameState === 'PLAYING') {
+        gpuRayTracing.storeFrameState(playerRef.current, ghostsRef.current);
         updateGame(dt);
+      } else if (isStageTransitioning) {
+        // Countdown for seamless automatic warp to next stage
+        setNextStageCountdown((prev) => {
+          const next = prev - dt;
+          if (next <= 0) {
+            advanceToNextStage();
+            return 2.0;
+          }
+          return next;
+        });
       }
 
       renderGame(ctx);
@@ -641,7 +677,7 @@ export function useAniPacGame(
       isRunning = false;
       if (animationFrameIdRef.current) cancelAnimationFrame(animationFrameIdRef.current);
     };
-  }, [gameState, level, theme, perspective, difficulty]);
+  }, [gameState, level, theme, perspective, difficulty, isStageTransitioning]);
 
   const updateGame = (dt: number) => {
     const p = playerRef.current;
@@ -779,12 +815,38 @@ export function useAniPacGame(
       if (bonusItemRef.current.duration <= 0) bonusItemRef.current = null;
     }
 
-    // Direction & Movement
+    // Direction & Movement with Intelligent 90-Degree Corner Lane Alignment
     const queued = inputRef.current.getQueuedDirection();
     if (queued !== 'NONE') p.nextDir = queued;
 
     if (p.nextDir !== 'NONE' && p.nextDir !== p.dir) {
-      if (canMoveInDirection(p.x, p.y, p.nextDir, map)) p.dir = p.nextDir;
+      const roundedX = Math.round(p.x);
+      const roundedY = Math.round(p.y);
+      const isOpposite =
+        (p.dir === 'LEFT' && p.nextDir === 'RIGHT') ||
+        (p.dir === 'RIGHT' && p.nextDir === 'LEFT') ||
+        (p.dir === 'UP' && p.nextDir === 'DOWN') ||
+        (p.dir === 'DOWN' && p.nextDir === 'UP');
+
+      if (isOpposite) {
+        p.dir = p.nextDir;
+      } else {
+        // Turning into perpendicular street
+        const isNearIntersection = Math.abs(p.x - roundedX) < 0.45 && Math.abs(p.y - roundedY) < 0.45;
+        if (isNearIntersection && canMoveInDirection(roundedX, roundedY, p.nextDir, map)) {
+          p.dir = p.nextDir;
+          // Align perpendicular coordinate to tile center to prevent corner snagging
+          if (p.nextDir === 'UP' || p.nextDir === 'DOWN') {
+            p.x = roundedX;
+          } else {
+            p.y = roundedY;
+          }
+        } else if (p.dir === 'NONE' && canMoveInDirection(roundedX, roundedY, p.nextDir, map)) {
+          p.dir = p.nextDir;
+          p.x = roundedX;
+          p.y = roundedY;
+        }
+      }
     }
 
     let moveSpeed = p.speed;
@@ -815,8 +877,10 @@ export function useAniPacGame(
         p.x += vx * moveSpeed * dt * 60;
         p.y += vy * moveSpeed * dt * 60;
       } else {
+        // Hit wall in current direction: snap to current tile center cleanly
         p.x = Math.round(p.x);
         p.y = Math.round(p.y);
+        p.dir = 'NONE';
       }
     }
 
@@ -1255,70 +1319,18 @@ export function useAniPacGame(
       ctx.scale(0.9, 0.9);
     }
 
-    // 1. Draw Maze Walls with Texture Styles
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = map.wallColor;
-    ctx.shadowColor = map.wallGlow;
-    ctx.shadowBlur = 10;
+    // 1. Hardware GPU-Accelerated Cached Maze Walls (Single GPU draw call)
+    const mazeBuffer = gpuRayTracing.getOrCreateMazeBuffer(map);
+    if (mazeBuffer) {
+      ctx.drawImage(mazeBuffer, 0, 0);
+    }
 
-    for (let y = 0; y < GRID_HEIGHT; y++) {
-      for (let x = 0; x < GRID_WIDTH; x++) {
-        const tile = map.grid[y][x];
-        const px = x * BASE_TILE_SIZE;
-        const py = y * BASE_TILE_SIZE;
+    // 2. High-Speed Batched Pellets & Glowing Orbs in single GPU pass
+    gpuRayTracing.renderBatchPellets(ctx, map, p.isFeverMode);
 
-        if (tile === TileType.WALL) {
-          // 2.5D Extrusion Shadow
-          if (perspective === '2_5D_ISO') {
-            ctx.fillStyle = '#02040a';
-            ctx.fillRect(px + 4, py + 4, BASE_TILE_SIZE - 2, BASE_TILE_SIZE - 2);
-          }
-
-          // Wall Pattern Texture
-          if (map.textureStyle === 'WOODBLOCK_UKIYOE') {
-            ctx.fillStyle = '#081d42';
-            ctx.fillRect(px + 1, py + 1, BASE_TILE_SIZE - 2, BASE_TILE_SIZE - 2);
-            ctx.strokeRect(px + 2, py + 2, BASE_TILE_SIZE - 4, BASE_TILE_SIZE - 4);
-          } else if (map.textureStyle === 'GOLD_LEAF_SHRINE') {
-            ctx.fillStyle = '#261a04';
-            ctx.fillRect(px + 1, py + 1, BASE_TILE_SIZE - 2, BASE_TILE_SIZE - 2);
-            ctx.strokeRect(px + 2, py + 2, BASE_TILE_SIZE - 4, BASE_TILE_SIZE - 4);
-          } else if (map.textureStyle === 'OBSIDIAN_CRYSTAL') {
-            ctx.fillStyle = '#1c0d2e';
-            ctx.fillRect(px + 1, py + 1, BASE_TILE_SIZE - 2, BASE_TILE_SIZE - 2);
-            ctx.strokeRect(px + 2, py + 2, BASE_TILE_SIZE - 4, BASE_TILE_SIZE - 4);
-          } else {
-            ctx.fillStyle = '#090d1f';
-            ctx.fillRect(px + 1, py + 1, BASE_TILE_SIZE - 2, BASE_TILE_SIZE - 2);
-            ctx.strokeRect(px + 2, py + 2, BASE_TILE_SIZE - 4, BASE_TILE_SIZE - 4);
-          }
-        } else if (tile === TileType.GHOST_DOOR) {
-          ctx.fillStyle = '#F472B6';
-          ctx.fillRect(px, py + BASE_TILE_SIZE / 2 - 2, BASE_TILE_SIZE, 4);
-        } else if (tile === TileType.DOT) {
-          ctx.fillStyle = map.dotColor;
-          ctx.shadowColor = map.dotColor;
-          ctx.shadowBlur = 6;
-          ctx.beginPath();
-          ctx.arc(px + BASE_TILE_SIZE / 2, py + BASE_TILE_SIZE / 2, 2.5, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (tile === TileType.POWER_ORB) {
-          const pulse = Math.sin(performance.now() * 0.008) * 1.5;
-          ctx.fillStyle = '#FACC15';
-          ctx.shadowColor = '#FBBF24';
-          ctx.shadowBlur = 14;
-          ctx.beginPath();
-          ctx.arc(px + BASE_TILE_SIZE / 2, py + BASE_TILE_SIZE / 2, 6 + pulse, 0, Math.PI * 2);
-          ctx.fill();
-
-          ctx.fillStyle = '#EF4444';
-          ctx.beginPath();
-          ctx.arc(px + BASE_TILE_SIZE / 2, py + BASE_TILE_SIZE / 2, 2.5, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
+    // 3. Sparkling Shimmer & Stardust Effect (Zero Spider Lines)
+    if (rayTracingActive) {
+      gpuRayTracing.renderSparklingEffect(ctx, map, p, ghostsRef.current);
     }
 
     // 2. Bonus Anime Item
@@ -1417,6 +1429,26 @@ export function useAniPacGame(
         } else if (isConfused) {
           ghostColor = '#F43F5E';
         }
+
+        // Dynamic Pulsing Aura based on difficulty state (intensifies in 'Hunter' mode)
+        ctx.save();
+        const auraPulse = Math.sin(performance.now() * 0.009 + g.pulse) * 4 + (difficulty === 'HUNTER' ? 18 : difficulty === 'GHOSTLY' ? 14 : 9);
+        const auraColor = difficulty === 'HUNTER' 
+          ? '#EF4444' 
+          : difficulty === 'GHOSTLY'
+          ? '#A855F7'
+          : difficulty === 'HARD'
+          ? '#F59E0B'
+          : ghostGlow;
+
+        ctx.shadowColor = auraColor;
+        ctx.shadowBlur = difficulty === 'HUNTER' ? 28 : 16;
+        ctx.strokeStyle = auraColor;
+        ctx.lineWidth = difficulty === 'HUNTER' ? 2.2 : 1.2;
+        ctx.beginPath();
+        ctx.arc(gx, gy, 12 + auraPulse * 0.25, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
 
         ctx.shadowColor = ghostGlow;
         ctx.shadowBlur = 12;
@@ -1664,51 +1696,136 @@ export function useAniPacGame(
       ctx.restore();
     });
 
+    // 9. Stage Transition Celebration Banner Overlay
+    if (isStageTransitioning) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(6, 10, 26, 0.85)';
+      ctx.fillRect(0, height / 2 - 45, width, 90);
+
+      ctx.strokeStyle = '#00F0FF';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#00F0FF';
+      ctx.shadowBlur = 18;
+      ctx.strokeRect(0, height / 2 - 45, width, 90);
+
+      ctx.font = '900 22px Orbitron, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#00F0FF';
+      ctx.fillText(`STAGE ${level} CLEARED!`, width / 2, height / 2 - 10);
+
+      ctx.font = '700 13px Rajdhani, sans-serif';
+      ctx.fillStyle = '#FACC15';
+      ctx.fillText(`WARPING TO STAGE ${Math.min(1001, level + 1)} IN ${Math.max(0.1, nextStageCountdown).toFixed(1)}s...`, width / 2, height / 2 + 18);
+      ctx.restore();
+    }
+
     ctx.restore();
   };
 
-  const startGame = () => {
-    levelStartTimeRef.current = performance.now();
-    replayFramesRef.current = [];
-    activeBestReplayRef.current = getLocalBestReplay(level);
-    recordFrame();
-    audioEngine.startMusic();
-    setGameState('PLAYING');
-  };
+  const advanceToNextStage = useCallback(() => {
+    const nextLvl = Math.min(1001, level + 1);
+    startLevel(nextLvl, true);
+    return nextLvl;
+  }, [level]);
 
-  const restartCurrentLevel = () => {
+  const startLevel = (targetLevel?: number, preserveScore = true) => {
+    const lvl = targetLevel !== undefined ? Math.max(1, Math.min(1001, targetLevel)) : level;
+    setLevel(lvl);
+    loadedLevelRef.current = lvl;
     const mSkin = GACHA_MAZE_SKINS.find((m) => m.id === equippedMazeSkinId);
-    mapDataRef.current = generateLevelMap(level, mSkin?.style);
-    ghostsRef.current = createInitialGhosts(mapDataRef.current, level, difficulty);
-    playerRef.current.lives = 3;
-    playerRef.current.score = 0;
+    const newMap = generateLevelMap(lvl, mSkin?.style);
+    mapDataRef.current = newMap;
+    ghostsRef.current = createInitialGhosts(newMap, lvl, difficulty);
+
+    if (!preserveScore) {
+      playerRef.current.score = 0;
+      setScore(0);
+      playerRef.current.lives = 3;
+      setLives(3);
+    } else {
+      // Ensure player always has at least 3 lives on a new level
+      playerRef.current.lives = Math.max(3, playerRef.current.lives);
+      setLives(playerRef.current.lives);
+    }
+
     playerRef.current.ki = 100;
+    setKiEnergy(100);
     playerRef.current.isFeverMode = false;
     playerRef.current.feverTimer = 0;
     playerRef.current.feverPelletCounter = 0;
     playerRef.current.ghostChainCount = 0;
     playerRef.current.ghostChainTimer = 0;
     playerRef.current.comboMultiplier = 1;
+    playerRef.current.activePower = null;
+    playerRef.current.powerTimeRemaining = 0;
+    playerRef.current.speed = 0.1;
+
     setIsFeverMode(false);
     setFeverTimer(0);
     setFeverPelletCount(0);
     setGhostChainCount(0);
     setGhostChainTimer(0);
     setComboMultiplier(1);
-    setLives(3);
-    setScore(0);
-    setKiEnergy(100);
-    resetPlayerPosition();
+    setActivePower(null);
+    setPowerTimer(0);
+    setDotsEatenThisStage(0);
+    setIsStageTransitioning(false);
+    setNextStageCountdown(2.0);
+
+    // Reset player position safely to new level's playerStart
+    const startX = newMap.playerStart?.x ?? 10;
+    const startY = newMap.playerStart?.y ?? 18;
+    playerRef.current.x = startX;
+    playerRef.current.y = startY;
+    playerRef.current.gridX = startX;
+    playerRef.current.gridY = startY;
+    playerRef.current.dir = 'NONE';
+    playerRef.current.nextDir = 'NONE';
+    playerRef.current.angle = 0;
+    playerRef.current.mouthAngle = 0.2;
+    inputRef.current.setDirection('NONE');
+
+    vfxRef.current.floatingTexts = [];
+    vfxRef.current.particles = [];
+    shadowClonesRef.current = [];
+    bonusItemRef.current = null;
+    bonusSpawnTimer.current = 15;
+
+    lastTimeRef.current = performance.now();
     levelStartTimeRef.current = performance.now();
     replayFramesRef.current = [];
-    activeBestReplayRef.current = getLocalBestReplay(level);
-    recordFrame();
+    activeBestReplayRef.current = getLocalBestReplay(lvl);
+    recordFrame('POWER_TRIGGER', `STAGE ${lvl} READY`, '#00F0FF');
     audioEngine.startMusic();
     setGameState('PLAYING');
   };
 
+  const startGame = () => {
+    startLevel(level, true);
+  };
+
+  const restartCurrentLevel = () => {
+    startLevel(level, false);
+  };
+
   const setPlayerDirection = (dir: Direction) => {
     inputRef.current.setDirection(dir);
+  };
+
+  const toggleRayTracing = () => {
+    setRayTracingActive((prev) => {
+      const next = !prev;
+      gpuRayTracing.rayTracingActive = next;
+      return next;
+    });
+  };
+
+  const toggleFrameGen = () => {
+    setFrameGenActive((prev) => {
+      const next = !prev;
+      gpuRayTracing.frameGenActive = next;
+      return next;
+    });
   };
 
   return {
@@ -1732,7 +1849,20 @@ export function useAniPacGame(
     isFeverMode,
     feverTimer,
     feverPelletCount,
+    isKillStreakActive,
+    killStreakTitle,
+    dismissKillStreak,
+    // GPU Hardware Acceleration, Ray Tracing, AI Frame Gen & Stage Transition
+    fps,
+    rayTracingActive,
+    frameGenActive,
+    toggleRayTracing,
+    toggleFrameGen,
+    isStageTransitioning,
+    nextStageCountdown,
+    advanceToNextStage,
     startGame,
+    startLevel,
     restartCurrentLevel,
     triggerShonenMove,
     setPlayerDirection,

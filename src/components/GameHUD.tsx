@@ -21,6 +21,11 @@ interface GameHUDProps {
   isFeverMode?: boolean;
   feverTimer?: number;
   feverPelletCount?: number;
+  fps?: number;
+  rayTracingActive?: boolean;
+  frameGenActive?: boolean;
+  onToggleRayTracing?: () => void;
+  onToggleFrameGen?: () => void;
   onTriggerMove: (type: ShonenPowerType) => void;
 }
 
@@ -194,6 +199,11 @@ export const GameHUD: React.FC<GameHUDProps> = ({
   isFeverMode = false,
   feverTimer = 0,
   feverPelletCount = 0,
+  fps = 500,
+  rayTracingActive = true,
+  frameGenActive = true,
+  onToggleRayTracing,
+  onToggleFrameGen,
   onTriggerMove,
 }) => {
   const activeMoveInfo = activePower ? SHONEN_MOVES[activePower] : null;
@@ -217,6 +227,35 @@ export const GameHUD: React.FC<GameHUDProps> = ({
             <span className="text-sm sm:text-base font-black text-white font-['Orbitron']">
               {level} <span className="text-xs text-zinc-500 font-normal">/ 1001</span>
             </span>
+          </div>
+        </div>
+
+        {/* GPU Hardware Acceleration & AI Frame Gen Badge (Capped at 500 FPS) */}
+        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#060a1d]/90 border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.25)] pointer-events-auto">
+          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+          <span className="text-[11px] font-mono font-black text-emerald-300">
+            {fps} FPS
+          </span>
+          <div className="flex items-center gap-1 border-l border-zinc-700/80 pl-1.5 text-[8px] font-mono font-bold">
+            <button
+              onClick={onToggleRayTracing}
+              className={`px-1.5 py-0.5 rounded cursor-pointer transition-all flex items-center gap-0.5 ${
+                rayTracingActive ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50' : 'text-zinc-500'
+              }`}
+              title="Magical Sparkling Shimmer & Stardust Effect"
+            >
+              <Sparkles className="w-2.5 h-2.5" />
+              <span>SPARKLE</span>
+            </button>
+            <button
+              onClick={onToggleFrameGen}
+              className={`px-1 py-0.5 rounded cursor-pointer transition-all ${
+                frameGenActive ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50' : 'text-zinc-500'
+              }`}
+              title="AI Sub-Frame Generation & Motion Interpolation (500 FPS Target)"
+            >
+              AI-FG
+            </button>
           </div>
         </div>
 

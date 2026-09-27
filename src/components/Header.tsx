@@ -20,11 +20,15 @@ import {
   Maximize2,
   Minimize2,
   Ghost as GhostIcon,
-  Tv
+  Tv,
+  Home,
+  Map
 } from 'lucide-react';
 import { GameDifficulty, RenderPerspective, ScreenDisplayMode } from '../game/types';
 
 interface HeaderProps {
+  onGoHome?: () => void;
+  onOpenMapCampaign?: () => void;
   onOpenLeaderboard: () => void;
   onOpenThemes: () => void;
   onOpenLevels: () => void;
@@ -48,6 +52,8 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
+  onGoHome,
+  onOpenMapCampaign,
   onOpenLeaderboard,
   onOpenThemes,
   onOpenLevels,
@@ -107,15 +113,40 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          <div>
+          <div className="cursor-pointer" onClick={onGoHome}>
             <div className="flex items-center gap-1.5">
-              <h1 className="font-['Orbitron'] font-black text-lg sm:text-xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-amber-300 to-rose-400 drop-shadow-[0_0_15px_rgba(6,182,212,0.5)]">
+              <h1 className="font-['Orbitron'] font-black text-lg sm:text-xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-amber-300 to-rose-400 drop-shadow-[0_0_15px_rgba(6,182,212,0.5)] hover:brightness-110 transition-all">
                 AniPac
               </h1>
               <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 tracking-widest hidden sm:inline-block">
                 SHONEN ARCADE
               </span>
             </div>
+          </div>
+
+          {/* Quick Nav: Home & Maps */}
+          <div className="flex items-center gap-1 ml-1 sm:ml-2">
+            {onGoHome && (
+              <button
+                onClick={onGoHome}
+                className="px-2 py-1 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-700/80 hover:border-cyan-500/50 text-[11px] font-black font-['Orbitron'] text-zinc-300 hover:text-white flex items-center gap-1 transition-all cursor-pointer"
+                title="Return to Home Menu & Title Screen"
+              >
+                <Home className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="hidden md:inline">HOME</span>
+              </button>
+            )}
+
+            {onOpenMapCampaign && (
+              <button
+                onClick={onOpenMapCampaign}
+                className="px-2 py-1 rounded-lg bg-gradient-to-r from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 border border-amber-500/40 text-[11px] font-black font-['Orbitron'] text-amber-300 flex items-center gap-1 transition-all cursor-pointer shadow-md"
+                title="Candy Crush Style World Map Selection"
+              >
+                <Map className="w-3.5 h-3.5 text-amber-400" />
+                <span>MAPS</span>
+              </button>
+            )}
           </div>
         </div>
 

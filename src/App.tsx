@@ -12,8 +12,11 @@ import { DailyMissionsModal } from './components/DailyMissionsModal';
 import { GachaModal } from './components/GachaModal';
 import { LockerModal } from './components/LockerModal';
 import { GhostReplayModal } from './components/GhostReplayModal';
+import { GhostBestiaryModal } from './components/GhostBestiaryModal';
+import { HomeScreen } from './components/HomeScreen';
+import { CandyCrushMapSelect } from './components/CandyCrushMapSelect';
 import { useAniPacGame } from './game/useAniPacGame';
-import { CURATED_ANIME_THEMES } from './game/backgroundThemes';
+import { CURATED_ANIME_THEMES, POPULAR_ANIME_GIFS } from './game/backgroundThemes';
 import { BackgroundTheme, GameDifficulty, RenderPerspective, ScreenDisplayMode, ShonenPowerType } from './game/types';
 import { audioEngine } from './game/audioEngine';
 import { GRID_WIDTH, GRID_HEIGHT, BASE_TILE_SIZE } from './game/constants';
@@ -37,11 +40,14 @@ import {
   Eye,
   Zap,
   Flame,
-  X
+  X,
+  Home,
+  Map,
+  ArrowRight
 } from 'lucide-react';
 
 function AniPacApp() {
-  const { profile, updateMissionProgress, setDifficulty: setCloudDifficulty, setPerspective: setCloudPerspective } = useAuth();
+  const { profile, updateStats, updateMissionProgress, setDifficulty: setCloudDifficulty, setPerspective: setCloudPerspective } = useAuth();
   
   // Customization & Visual Themes
   const [currentLevel, setCurrentLevel] = useState<number>(profile?.maxLevelReached || 1);
@@ -50,6 +56,9 @@ function AniPacApp() {
   const [bgOpacity, setBgOpacity] = useState<number>(0.35);
   const [enableCRT, setEnableCRT] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(false);
+
+  // App Screen: 'HOME' (Home Menu & Title Screen) | 'MAP_SELECT' (Candy Crush Map Selection) | 'GAME' (Active Gameplay)
+  const [appScreen, setAppScreen] = useState<'HOME' | 'MAP_SELECT' | 'GAME'>('HOME');
 
   // Screen Display Mode: STANDARD | FILL_SCREEN | FULLSCREEN
   const [displayMode, setDisplayMode] = useState<ScreenDisplayMode>(() => {
@@ -69,7 +78,61 @@ function AniPacApp() {
   const [isGachaOpen, setIsGachaOpen] = useState<boolean>(false);
   const [isLockerOpen, setIsLockerOpen] = useState<boolean>(false);
   const [isReplaysOpen, setIsReplaysOpen] = useState<boolean>(false);
+  const [isBestiaryOpen, setIsBestiaryOpen] = useState<boolean>(false);
+  const [hasBgError, setHasBgError] = useState<boolean>(false);
+  const [bgFallbackIndex, setBgFallbackIndex] = useState<number>(0);
+  const [autoRotateBg, setAutoRotateBg] = useState<boolean>(true);
+  const [blacklistedUrls, setBlacklistedUrls] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('anipac_blacklisted_gifs');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
   const [replayTargetLevel, setReplayTargetLevel] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    setBgFallbackIndex(0);
+    setHasBgError(false);
+  }, [currentTheme.gifUrl]);
+
+  // Auto-refresh anime background every 45 seconds if enabled
+  useEffect(() => {
+    if (!autoRotateBg) return;
+    const interval = setInterval(() => {
+      const availableGifs = POPULAR_ANIME_GIFS.map((g) => g.url).filter((u) => !blacklistedUrls.has(u));
+      if (availableGifs.length > 0) {
+        const randomGif = availableGifs[Math.floor(Math.random() * availableGifs.length)];
+        setCurrentTheme((prev) => ({ ...prev, gifUrl: randomGif }));
+      }
+    }, 45000);
+    return () => clearInterval(interval);
+  }, [autoRotateBg, blacklistedUrls]);
+
+  const currentGifList: string[] = [
+    ...(currentTheme.gifUrl ? [currentTheme.gifUrl] : []),
+    ...POPULAR_ANIME_GIFS.map((g) => g.url)
+  ].filter((url): url is string => Boolean(url) && !blacklistedUrls.has(url));
+
+  const activeGifUrl = currentGifList[bgFallbackIndex] || currentGifList[0];
+
+  const handleBgError = () => {
+    if (activeGifUrl && typeof activeGifUrl === 'string') {
+      const updated = new Set(blacklistedUrls);
+      updated.add(activeGifUrl);
+      setBlacklistedUrls(updated);
+      try {
+        localStorage.setItem('anipac_blacklisted_gifs', JSON.stringify(Array.from(updated)));
+      } catch {}
+    }
+
+    if (bgFallbackIndex < currentGifList.length - 1) {
+      setBgFallbackIndex((prev) => prev + 1);
+    } else {
+      setHasBgError(true);
+    }
+  };
 
   // Victory / Game over stats
   const [modalType, setModalType] = useState<'VICTORY' | 'GAMEOVER' | null>(null);
@@ -94,6 +157,8 @@ function AniPacApp() {
     coinsEarned: number;
   }) => {
     setGameStats(stats);
+    // Automatically persist progression so Stage 2+ is unlocked immediately in Firestore and profile
+    updateStats(stats.score, stats.level + 1, stats.ghostsEaten, stats.specialMoves, stats.coinsEarned);
     setModalType('VICTORY');
   };
 
@@ -129,7 +194,20 @@ function AniPacApp() {
     isFeverMode,
     feverTimer,
     feverPelletCount,
+    isKillStreakActive,
+    killStreakTitle,
+    dismissKillStreak,
+    // GPU Hardware Acceleration, Ray Tracing, AI Frame Gen & Stage Transition
+    fps,
+    rayTracingActive,
+    frameGenActive,
+    toggleRayTracing,
+    toggleFrameGen,
+    isStageTransitioning,
+    nextStageCountdown,
+    advanceToNextStage,
     startGame,
+    startLevel,
     restartCurrentLevel,
     triggerShonenMove,
     setPlayerDirection,
@@ -201,13 +279,14 @@ function AniPacApp() {
 
   const handleNextLevel = () => {
     setModalType(null);
-    setCurrentLevel((lvl) => Math.min(1001, lvl + 1));
-    startGame();
+    const nextLvl = Math.min(1001, currentLevel + 1);
+    setCurrentLevel(nextLvl);
+    startLevel(nextLvl, true);
   };
 
   const handleRestartFromModal = () => {
     setModalType(null);
-    restartCurrentLevel();
+    startLevel(currentLevel, false);
   };
 
   const handleDifficultyChange = (diff: GameDifficulty) => {
@@ -230,24 +309,32 @@ function AniPacApp() {
     }`}>
       {/* Dynamic Animated Anime Background Backdrop */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        {currentTheme.gifUrl && (
+        {activeGifUrl && !hasBgError && (
           <div
             className="absolute inset-0 bg-center bg-cover transition-opacity duration-700 scale-105"
             style={{
-              backgroundImage: `url('${currentTheme.gifUrl}')`,
-              opacity: bgOpacity,
-              filter: 'blur(2px)',
+              backgroundImage: `url('${activeGifUrl}')`,
+              opacity: Math.max(0.65, bgOpacity),
+              filter: 'brightness(0.9) saturate(1.25)',
             }}
-          />
+          >
+            <img
+              key={activeGifUrl}
+              src={activeGifUrl}
+              alt=""
+              className="hidden"
+              onError={handleBgError}
+            />
+          </div>
         )}
         <div
           className="absolute inset-0"
           style={{
             background: currentTheme.bgGradient,
-            opacity: 0.85,
+            opacity: hasBgError || !activeGifUrl ? 0.95 : 0.5,
           }}
         />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_30%,#060814_90%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_20%,#060814_85%)]" />
       </div>
 
       {/* CRT Scanlines Filter */}
@@ -255,9 +342,64 @@ function AniPacApp() {
         <div className="fixed inset-0 pointer-events-none z-40 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.35)_50%)] bg-[length:100%_4px]" />
       )}
 
-      {/* Standard Header (visible only when in STANDARD arcade view) */}
-      {!isFillOrFull && (
+      {/* 1. HOME SCREEN: Title Screen & Home Menu */}
+      {appScreen === 'HOME' && (
+        <HomeScreen
+          currentLevel={currentLevel}
+          highestLevelReached={profile?.maxLevelReached || currentLevel}
+          coins={profile?.pacCoins || 0}
+          displayName={profile?.displayName || 'Shinobi Master'}
+          avatarUrl={profile?.photoURL}
+          equippedSkinId={equippedSkinId}
+          difficulty={difficulty}
+          onChangeDifficulty={handleDifficultyChange}
+          isMuted={isMuted}
+          onToggleMute={toggleMute}
+          onStartCampaign={() => setAppScreen('MAP_SELECT')}
+          onQuickPlay={() => {
+            startLevel(currentLevel, false);
+            setAppScreen('GAME');
+          }}
+          onOpenGacha={() => setIsGachaOpen(true)}
+          onOpenLocker={() => setIsLockerOpen(true)}
+          onOpenMissions={() => setIsMissionsOpen(true)}
+          onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
+          onOpenThemes={() => setIsThemesOpen(true)}
+          onOpenShowcase={() => setIsShowcaseOpen(true)}
+          onOpenReplays={() => {
+            setReplayTargetLevel(currentLevel);
+            setIsReplaysOpen(true);
+          }}
+          onOpenBestiary={() => setIsBestiaryOpen(true)}
+        />
+      )}
+
+      {/* 2. MAP SELECTION: Candy Crush Winding Path Trail */}
+      {appScreen === 'MAP_SELECT' && (
+        <div className="w-full flex-1 flex flex-col items-center justify-start p-2 sm:p-4 z-10">
+          <CandyCrushMapSelect
+            currentLevel={currentLevel}
+            maxUnlockedLevel={profile?.maxLevelReached || currentLevel}
+            onSelectLevel={(lvl) => {
+              setCurrentLevel(lvl);
+              startLevel(lvl, false);
+              setAppScreen('GAME');
+            }}
+            onBackToHome={() => setAppScreen('HOME')}
+            coins={profile?.pacCoins || 0}
+            equippedSkinId={equippedSkinId}
+            difficulty={difficulty}
+            onChangeDifficulty={handleDifficultyChange}
+          />
+        </div>
+      )}
+
+      {/* 3. ACTIVE ARCADE GAMEPLAY VIEWPORT */}
+      {/* Standard Header (visible only when in STANDARD arcade view during GAME mode) */}
+      {!isFillOrFull && appScreen === 'GAME' && (
         <Header
+          onGoHome={() => setAppScreen('HOME')}
+          onOpenMapCampaign={() => setAppScreen('MAP_SELECT')}
           onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
           onOpenThemes={() => setIsThemesOpen(true)}
           onOpenLevels={() => setIsLevelsOpen(true)}
@@ -288,9 +430,11 @@ function AniPacApp() {
       {/* UNIFIED PERSISTENT GAME VIEWPORT (Canvas is NEVER unmounted across modes)  */}
       {/* ========================================================================= */}
       <main className={
-        isFillOrFull 
-          ? "fixed inset-0 w-screen h-screen z-20 bg-black/95 flex flex-col items-center justify-center overflow-hidden"
-          : "flex-1 w-full max-w-4xl mx-auto flex flex-col items-center justify-start p-2 sm:p-4 z-10 gap-3"
+        appScreen !== 'GAME'
+          ? "hidden"
+          : isFillOrFull 
+            ? "fixed inset-0 w-screen h-screen z-20 bg-black/95 flex flex-col items-center justify-center overflow-hidden"
+            : "flex-1 w-full max-w-4xl mx-auto flex flex-col items-center justify-start p-2 sm:p-4 z-10 gap-3"
       }>
         
         {/* Fill Screen Floating Top Header */}
@@ -337,6 +481,13 @@ function AniPacApp() {
                 STAGE {level}
               </span>
 
+              {/* Hardware GPU & AI Frame Gen Badge (Capped at 500 FPS) */}
+              <div className="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-[#060a1d]/90 border border-emerald-500/40 text-emerald-300 text-[10px] font-mono font-black shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                <span>{fps} FPS</span>
+                <span className="text-cyan-400 text-[8px] pl-1 border-l border-zinc-700">SPARKLES</span>
+              </div>
+
               {isFeverMode && (
                 <span className="px-1.5 py-0.5 rounded bg-gradient-to-r from-red-500 via-yellow-400 to-cyan-400 text-black text-[9px] font-black font-['Orbitron'] animate-pulse">
                   3X FEVER ({feverTimer.toFixed(1)}s)
@@ -359,6 +510,22 @@ function AniPacApp() {
 
             {/* Right: Floating Actions */}
             <div className="flex items-center gap-1.5 bg-[#090d1f]/90 backdrop-blur-md border border-cyan-500/40 rounded-xl p-1 pointer-events-auto shadow-lg shadow-black/60">
+              <button
+                onClick={() => setAppScreen('MAP_SELECT')}
+                className="p-1.5 rounded-lg bg-zinc-900 hover:bg-amber-950/60 text-amber-300 transition-all cursor-pointer"
+                title="Candy Crush World Map Campaign"
+              >
+                <Map className="w-4 h-4" />
+              </button>
+
+              <button
+                onClick={() => setAppScreen('HOME')}
+                className="p-1.5 rounded-lg bg-zinc-900 hover:bg-cyan-950/60 text-cyan-300 transition-all cursor-pointer"
+                title="Home Menu & Title Screen"
+              >
+                <Home className="w-4 h-4" />
+              </button>
+
               <button
                 onClick={() => {
                   setReplayTargetLevel(currentLevel);
@@ -410,6 +577,11 @@ function AniPacApp() {
               isFeverMode={isFeverMode}
               feverTimer={feverTimer}
               feverPelletCount={feverPelletCount}
+              fps={fps}
+              rayTracingActive={rayTracingActive}
+              frameGenActive={frameGenActive}
+              onToggleRayTracing={toggleRayTracing}
+              onToggleFrameGen={toggleFrameGen}
               onTriggerMove={triggerShonenMove}
             />
           </div>
@@ -514,6 +686,53 @@ function AniPacApp() {
               </div>
             </div>
           )}
+
+          {/* SEAMLESS STAGE TRANSITION CELEBRATION OVERLAY */}
+          {isStageTransitioning && (
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center animate-fadeIn z-30 pointer-events-auto">
+              <div className="w-14 h-14 rounded-2xl bg-cyan-500/20 border border-cyan-400 text-cyan-300 flex items-center justify-center mb-2 shadow-[0_0_25px_rgba(6,182,212,0.5)] animate-bounce">
+                <Crown className="w-7 h-7 text-cyan-300" />
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-amber-300 to-emerald-400 font-['Orbitron'] tracking-wider mb-1">
+                STAGE {level} CLEARED!
+              </h2>
+              <p className="text-xs sm:text-sm text-zinc-300 mb-4 font-['Rajdhani'] font-bold">
+                Yokai vaporized! Warping to Stage {Math.min(1001, level + 1)} in {Math.max(0.1, nextStageCountdown).toFixed(1)}s...
+              </p>
+              <button
+                onClick={handleNextLevel}
+                className="px-7 py-3 bg-gradient-to-r from-cyan-500 via-blue-600 to-cyan-500 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-xs font-['Orbitron'] rounded-xl shadow-lg shadow-cyan-500/30 flex items-center gap-2 cursor-pointer transition-all hover:scale-105 active:scale-95"
+              >
+                <span>WARP TO STAGE {Math.min(1001, level + 1)} NOW</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* VICTORY KILL-STREAK NOTIFICATION OVERLAY */}
+          {isKillStreakActive && (
+            <div className="absolute inset-x-4 top-4 z-40 bg-gradient-to-r from-red-950/95 via-purple-950/95 to-blue-950/95 backdrop-blur-md border-2 border-rose-500 rounded-2xl p-3.5 shadow-[0_0_35px_rgba(244,63,94,0.6)] flex items-center justify-between gap-3 animate-bounce pointer-events-auto">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-400 flex items-center justify-center text-rose-300">
+                  <Flame className="w-5 h-5 animate-pulse text-rose-400" />
+                </div>
+                <div>
+                  <h3 className="text-xs sm:text-sm font-black text-rose-300 font-['Orbitron'] tracking-wider">
+                    {killStreakTitle}
+                  </h3>
+                  <p className="text-[10px] text-zinc-300 font-['Rajdhani'] font-bold">
+                    Rapid consecutive ghost elimination! x16 Combo Overdrive!
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={dismissKillStreak}
+                className="px-3 py-1.5 bg-rose-500 hover:bg-rose-400 text-black font-black text-[10px] font-['Orbitron'] rounded-xl cursor-pointer transition-all shadow-md shrink-0"
+              >
+                CLAIM ⚡
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Touch & Hotbar Controls (Adapts dynamically between Standard & Fill Screen) */}
@@ -537,6 +756,14 @@ function AniPacApp() {
         isOpen={isReplaysOpen}
         onClose={() => setIsReplaysOpen(false)}
         initialLevel={replayTargetLevel}
+      />
+
+      <GhostBestiaryModal
+        isOpen={isBestiaryOpen}
+        onClose={() => setIsBestiaryOpen(false)}
+        highestLevel={profile?.maxLevelReached || currentLevel}
+        currentDifficulty={difficulty}
+        totalGhostsEaten={profile?.totalGhostsEaten || 0}
       />
 
       <DailyMissionsModal
@@ -575,7 +802,7 @@ function AniPacApp() {
         currentLevel={currentLevel}
         onSelectLevel={(lvl) => {
           setCurrentLevel(lvl);
-          startGame();
+          startLevel(lvl, true);
         }}
       />
 
@@ -604,7 +831,7 @@ function AniPacApp() {
           }}
           onOpenLevelSelect={() => {
             setModalType(null);
-            setIsLevelsOpen(true);
+            setAppScreen('MAP_SELECT');
           }}
           onWatchReplay={() => {
             setModalType(null);
